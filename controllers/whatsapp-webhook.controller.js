@@ -8,6 +8,10 @@ import {
 import db from '../models/index.js';
 const { WabaConfiguration } = db;
 import { parseIncomingMessage, getWhatsAppMediaUrl, downloadAndStoreMedia } from '../utils/whatsapp-message-handler.js';
+import {
+  logIncomingReply,
+  toAutomationReplyFields,
+} from '../utils/whatsapp-incoming-reply.parser.js';
 import automationEngine from '../utils/automation-engine.js';
 import { updateWhatsAppStatus } from '../utils/message-status.service.js';
 import { updateCampaignStatsFromWhatsApp } from '../utils/campaign-stats.service.js';
@@ -65,10 +69,15 @@ export const handleIncomingMessage = async (req, res, io = null) => {
       mimeType,
       interactiveId,
       interactiveData,
+      incomingReply,
       replyMessageId,
       reactionMessageId,
       reactionEmoji
     } = parseIncomingMessage(message);
+
+    if (incomingReply) {
+      logIncomingReply(incomingReply, message.from);
+    }
 
     let mediaUrl = null;
     let storedPath = null;
@@ -127,6 +136,17 @@ export const handleIncomingMessage = async (req, res, io = null) => {
       user_id: whatsappPhoneNumber.user_id,
       contact_id: contactDoc._id,
       interactive_data: interactiveData,
+      incoming_reply: incomingReply
+        ? {
+          category: incomingReply.category,
+          id: incomingReply.id,
+          title: incomingReply.title,
+          description: incomingReply.description,
+          payload: incomingReply.payload,
+          meta_message_type: incomingReply.metaMessageType,
+          meta_interactive_type: incomingReply.metaInteractiveType,
+        }
+        : undefined,
       provider: 'business_api',
       reply_message_id: replyMessageId,
       reaction_message_id: reactionMessageId
@@ -498,34 +518,17 @@ export const handleIncomingMessage = async (req, res, io = null) => {
 
 
     try {
-      const interactiveReply =
-        message.interactive?.button_reply ||
-        message.interactive?.list_reply ||
-        message.button ||
-        null;
-
-      const interactiveReplyId =
-        interactiveReply?.id ||
-        interactiveReply?.payload ||
-        interactiveId ||
-        null;
-
-      const interactiveReplyTitle =
-        interactiveReply?.title ||
-        interactiveReply?.text ||
-        content ||
-        null;
-
-      const automationMessage = interactiveReplyTitle || interactiveReplyId || content;
+      const replyFields = toAutomationReplyFields(incomingReply);
+      const automationMessage =
+        replyFields.interactive_reply_title ||
+        replyFields.interactive_reply_id ||
+        content;
 
       await automationEngine.triggerEvent("message_received", {
         message: automationMessage,
         messagePayload: message,
-        interactive_id: interactiveReplyId,
-        interactive_reply_id: interactiveReplyId,
-        interactive_reply_title: interactiveReplyTitle,
-        interactive_reply_type: message.interactive?.type || message.type,
-        interactive_reply_description: interactiveReply?.description || null,
+        interactive_id: replyFields.interactive_reply_id || interactiveId || null,
+        ...replyFields,
         senderNumber: message.from,
         recipientNumber: whatsappPhoneNumber.display_phone_number,
         messageType: message.type,

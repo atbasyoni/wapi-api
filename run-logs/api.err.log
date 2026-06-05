@@ -1,0 +1,15 @@
+Sequence queue internal error: 
+Sequence worker internal error: 
+Redis connection error in sequence queue: 
+(node:30732) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"fb_campaign_id":1} for model "FacebookAdCampaign". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30732) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"fb_adset_id":1} for model "FacebookAdSet". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:30732) [MONGOOSE] Warning: mongoose: Duplicate schema index on {"fb_ad_id":1} for model "FacebookAd". This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+[WhatsApp OTP Error]: {
+  error: {
+    message: 'Invalid OAuth access token - Cannot parse access token',
+    type: 'OAuthException',
+    code: 190,
+    fbtrace_id: 'AhnL3jjlDKAs5xUJeS0PTaH'
+  }
+}

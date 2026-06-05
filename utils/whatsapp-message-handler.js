@@ -4,6 +4,7 @@ import path from 'path';
 import { promisify } from 'util';
 import { Setting } from '../models/index.js';
 import AWSStorage from './aws-storage.js';
+import { parseIncomingReply } from './whatsapp-incoming-reply.parser.js';
 const writeFile = promisify(fs.writeFile);
 
 
@@ -13,6 +14,7 @@ export function parseIncomingMessage(message) {
   let fileType = null;
   let mimeType = null;
   let interactiveId = null;
+  let incomingReply = null;
   let replyMessageId = null;
   let reactionMessageId = null;
   let reactionEmoji = null;
@@ -21,15 +23,19 @@ export function parseIncomingMessage(message) {
     replyMessageId = message.context.id;
   }
 
+  // Normalize template quick-replies vs interactive button/list replies up front.
+  incomingReply = parseIncomingReply(message);
+
   switch (message.type) {
     case "text":
       content = message.text.body;
       break;
 
     case "button":
-      interactiveId = message.button?.payload || null;
-      content = message.button?.text || message.button?.payload || null;
-      fileType = "button_reply";
+      // Template quick-reply (Custom) — Meta type "button", NOT interactive.button_reply.
+      interactiveId = incomingReply?.id || message.button?.payload || null;
+      content = incomingReply?.title || message.button?.text || message.button?.payload || null;
+      fileType = incomingReply?.fileType || 'template_quick_reply';
       break;
 
     case "image":
@@ -70,21 +76,14 @@ export function parseIncomingMessage(message) {
       break;
 
     case "interactive":
-      console.log("message.interactive", message.interactive)
-      if (message.interactive?.button_reply) {
-        interactiveId = message.interactive.button_reply.id;
-        content = message.interactive.button_reply.title;
-        fileType = "button_reply";
-      } else if (message.interactive?.list_reply) {
-        interactiveId = message.interactive.list_reply.id;
-        content = message.interactive.list_reply.title;
-        fileType = "list_reply";
+      if (incomingReply) {
+        interactiveId = incomingReply.id;
+        content = incomingReply.title;
+        fileType = incomingReply.fileType;
       } else if (message.interactive?.nfm_reply) {
         content = "Response sent";
         fileType = "nfm_reply";
-      }
-
-      else if (message.interactive?.call_permission_reply) {
+      } else if (message.interactive?.call_permission_reply) {
         const permissionResponse = message.interactive.call_permission_reply;
 
         if (permissionResponse.response === "reject") {
@@ -96,7 +95,6 @@ export function parseIncomingMessage(message) {
             : "call permission is allowed temporarily";
         }
       }
-      console.log("content", content)
       break;
 
     case "reaction":
@@ -115,7 +113,18 @@ export function parseIncomingMessage(message) {
     interactiveData = message.interactive;
   }
 
-  return { content, mediaId, fileType, mimeType, interactiveId, interactiveData, replyMessageId, reactionMessageId, reactionEmoji };
+  return {
+    content,
+    mediaId,
+    fileType,
+    mimeType,
+    interactiveId,
+    interactiveData,
+    incomingReply,
+    replyMessageId,
+    reactionMessageId,
+    reactionEmoji,
+  };
 }
 
 

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "nodemon server.js",
     "migrate-whatsapp": "node utils/migrate-whatsapp-structure.js",
-    "seed": "node seeder/index.js"
+    "seed": "node seeder/index.js",
+    "test:incoming-reply": "node --test utils/whatsapp-incoming-reply.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1032.0",

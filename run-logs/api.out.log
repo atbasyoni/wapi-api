@@ -1,0 +1,47 @@
+
+> wapi@0.0.0 start
+> nodemon server.js
+
+[33m[nodemon] 3.1.14[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node server.js`[39m
+Automation engine event listeners initialized: [
+  'message_received',
+  'contact_joined',
+  'status_update',
+  'order_received'
+]
+called
+MongoDB connected successfully
+Starting settings data fix...
+No settings found, nothing to fix.
+Subscription expiry cron job scheduled.
+Trial expired user deletion cron job scheduled.
+Server running at http://localhost:5000
+WebSocket (Socket.IO) enabled at path /socket.io
+Starting campaign scheduler...
+Campaign scheduler started
+Starting Automated Response Worker...
+Automated response worker started
+Appointment reminder service started (1h interval)
+Creating sequence worker with Redis connection
+Sequence worker is ready to process jobs
+Worker ID: 0b1529cd-56b4-4512-a4c1-cc0a2971d891
+Found 0 Baileys connections in database
+calledd
+calledd
+calledd
+WebSocket client connected: JXrbShgglNWbfAz6AAAB
+setting false
+demo false
+adminSettings false
+setting false
+demo false
+calledd
+WebSocket client connected: QDCctF_5XakQLgPLAAAD
+adminSettings false
+setting false
+demo false
+WebSocket client connected: UL9fFi3m-YgSex6mAAAF

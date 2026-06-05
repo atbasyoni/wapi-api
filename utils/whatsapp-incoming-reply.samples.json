@@ -1,0 +1,143 @@
+{
+  "template_quick_reply_custom": {
+    "description": "User taps a quick-reply button on an approved template message (Meta webhook type: button)",
+    "reference": "https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/reference/messages/button",
+    "payload": {
+      "object": "whatsapp_business_account",
+      "entry": [
+        {
+          "id": "102290129340398",
+          "changes": [
+            {
+              "value": {
+                "messaging_product": "whatsapp",
+                "metadata": {
+                  "display_phone_number": "15550783881",
+                  "phone_number_id": "106540352242922"
+                },
+                "contacts": [
+                  {
+                    "profile": { "name": "Sheena Nelson" },
+                    "wa_id": "16505551234"
+                  }
+                ],
+                "messages": [
+                  {
+                    "context": {
+                      "from": "15550783881",
+                      "id": "wamid.HBgLMTQxMjU1NTA4MjkVAgASGBQzQUNCNjk5RDUwNUZGMUZEM0VBRAA="
+                    },
+                    "from": "16505551234",
+                    "id": "wamid.HBgLMTY1MDM4Nzk0MzkVAgASGBQzQUFERjg0NDEzNDdFODU3MUMxMAA=",
+                    "timestamp": "1750091045",
+                    "type": "button",
+                    "button": {
+                      "payload": "تأكيد الاوردر",
+                      "text": "تأكيد الاوردر"
+                    }
+                  }
+                ]
+              },
+              "field": "messages"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "interactive_button_reply": {
+    "description": "User taps a reply button on a bot-flow interactive message (NOT a template quick-reply)",
+    "reference": "https://developers.facebook.com/docs/whatsapp/cloud-api/messages/interactive-reply-buttons-messages",
+    "payload": {
+      "object": "whatsapp_business_account",
+      "entry": [
+        {
+          "id": "102290129340398",
+          "changes": [
+            {
+              "value": {
+                "messaging_product": "whatsapp",
+                "metadata": {
+                  "display_phone_number": "15550783881",
+                  "phone_number_id": "106540352242922"
+                },
+                "contacts": [
+                  {
+                    "profile": { "name": "Pablo Morales" },
+                    "wa_id": "16505551234"
+                  }
+                ],
+                "messages": [
+                  {
+                    "context": {
+                      "from": "15550783881",
+                      "id": "wamid.HBgLMTY0NjcwNDM1OTUVAgARGBJBM0Y4RUU0RUNFQkFDMjYzQUMA"
+                    },
+                    "from": "16505551234",
+                    "id": "wamid.HBgLMTY0NjcwNDM1OTUVAgASGBQzQThBREYwNzc2RDc2QjA1QTIwMgA=",
+                    "timestamp": "1714510003",
+                    "type": "interactive",
+                    "interactive": {
+                      "type": "button_reply",
+                      "button_reply": {
+                        "id": "fabc123___btn_1",
+                        "title": "Loved it"
+                      }
+                    }
+                  }
+                ]
+              },
+              "field": "messages"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "interactive_list_reply": {
+    "description": "User selects an item from an interactive list message",
+    "reference": "https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/reference/messages/interactive",
+    "payload": {
+      "object": "whatsapp_business_account",
+      "entry": [
+        {
+          "id": "102290129340398",
+          "changes": [
+            {
+              "value": {
+                "messaging_product": "whatsapp",
+                "metadata": {
+                  "display_phone_number": "15550783881",
+                  "phone_number_id": "106540352242922"
+                },
+                "contacts": [
+                  {
+                    "profile": { "name": "Test User" },
+                    "wa_id": "16505551234"
+                  }
+                ],
+                "messages": [
+                  {
+                    "from": "16505551234",
+                    "id": "wamid.HBgLMTYxMDAwMDAwMDAwFQIAERgSMDAwMDAwMDAwMDAwMDAwMDAwAA==",
+                    "timestamp": "1714510100",
+                    "type": "interactive",
+                    "interactive": {
+                      "type": "list_reply",
+                      "list_reply": {
+                        "id": "fabc123___item_1",
+                        "title": "Option A",
+                        "description": "First list option"
+                      }
+                    }
+                  }
+                ]
+              },
+              "field": "messages"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

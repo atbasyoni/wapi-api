@@ -30,7 +30,7 @@ const messageSchema = new mongoose.Schema({
   },
   message_type: {
     type: String,
-    enum: ['text', 'link', 'image', 'sticker', 'file', 'video', 'poll', 'form', 'system', 'call', 'document', 'audio', 'location', 'interactive', 'template', 'order', 'system_messages' , 'reaction'],
+    enum: ['text', 'link', 'image', 'sticker', 'file', 'video', 'poll', 'form', 'system', 'call', 'document', 'audio', 'location', 'interactive', 'button', 'template', 'order', 'system_messages', 'reaction'],
     default: 'text'
   },
   file_url: {
@@ -106,6 +106,23 @@ const messageSchema = new mongoose.Schema({
   interactive_data: {
     type: mongoose.Schema.Types.Mixed,
     default: null
+  },
+  /**
+   * Normalized inbound reply when user taps a template quick-reply, interactive button, or list item.
+   * @see utils/whatsapp-incoming-reply.parser.js
+   */
+  incoming_reply: {
+    category: {
+      type: String,
+      enum: ['template_quick_reply', 'interactive_button_reply', 'interactive_list_reply'],
+      default: null,
+    },
+    id: { type: String, default: null },
+    title: { type: String, default: null },
+    description: { type: String, default: null },
+    payload: { type: String, default: null },
+    meta_message_type: { type: String, default: null },
+    meta_interactive_type: { type: String, default: null },
   },
   whatsapp_connection_id: {
     type: mongoose.Schema.Types.ObjectId,

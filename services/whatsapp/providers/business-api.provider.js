@@ -751,73 +751,8 @@ export default class BusinessAPIProvider extends BaseProvider {
       throw new Error('WhatsApp Business API connection not found');
     }
 
-    const myPhoneNumber = connection.registred_phone_number;
-
-    const sentMessages = await Message.distinct('recipient_number', {
-      sender_number: myPhoneNumber,
-      recipient_number: { $ne: null },
-      deleted_at: null
-    });
-
-    const receivedMessages = await Message.distinct('sender_number', {
-      recipient_number: myPhoneNumber,
-      sender_number: { $ne: null },
-      deleted_at: null
-    });
-
-    const allContactNumbers = [
-      ...new Set([
-        ...sentMessages.filter(Boolean),
-        ...receivedMessages.filter(Boolean)
-      ])
-    ].filter(number => number && number !== myPhoneNumber);
-
-    const recentChats = await Promise.all(
-      allContactNumbers.map(async (contactNumber) => {
-        const lastMessage = await Message.findOne({
-          $or: [
-            {
-              sender_number: myPhoneNumber,
-              recipient_number: contactNumber,
-              deleted_at: null
-            },
-            {
-              sender_number: contactNumber,
-              recipient_number: myPhoneNumber,
-              deleted_at: null
-            }
-          ]
-        })
-          .sort({ wa_timestamp: -1 })
-          .lean();
-
-        return {
-          contact: {
-            number: contactNumber,
-            name: contactNumber,
-            avatar: null
-          },
-          lastMessage: lastMessage ? {
-            id: lastMessage._id.toString(),
-            content: lastMessage.content,
-            messageType: lastMessage.message_type,
-            fileUrl: lastMessage.file_url,
-            direction: lastMessage.direction,
-            fromMe: lastMessage.from_me,
-            createdAt: lastMessage.wa_timestamp,
-            is_seen: lastMessage.is_seen || false,
-            read_status: lastMessage.read_status || 'unread'
-          } : null
-        };
-      })
-    );
-
-    return recentChats.sort((a, b) => {
-      if (!a.lastMessage && !b.lastMessage) return 0;
-      if (!a.lastMessage) return 1;
-      if (!b.lastMessage) return -1;
-      return new Date(b.lastMessage.createdAt) - new Date(a.lastMessage.createdAt);
-    });
+    const { getRecentChatsFromMessages } = await import('../chat-list.service.js');
+    return getRecentChatsFromMessages(connection.registred_phone_number);
   }
 
   async disconnect(userId, connection = null) {

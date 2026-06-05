@@ -4,6 +4,7 @@ import { getSheetsClient, getCalendarClient, handleGoogleApiError } from './goog
 import { PROVIDER_TYPES } from '../services/whatsapp/unified-whatsapp.service.js';
 import appointmentService from '../services/appointment.service.js';
 import automationCache from './automation-cache.js';
+import { INCOMING_REPLY_CATEGORIES } from './whatsapp-incoming-reply.constants.js';
 import { v4 as uuidv4 } from 'uuid';
 
 class AutomationEngine {
@@ -181,6 +182,8 @@ class AutomationEngine {
               interactiveReplyTitle: eventData.interactive_reply_title || null,
               interactiveReplyType: eventData.interactive_reply_type || null,
               interactiveReplyDescription: eventData.interactive_reply_description || null,
+              reply_category: eventData.reply_category || null,
+              reply_payload: eventData.reply_payload || null,
               senderNumber,
               recipientNumber,
               userId,
@@ -218,6 +221,8 @@ class AutomationEngine {
       interactiveReplyTitle: eventData?.interactive_reply_title || null,
       interactiveReplyType: eventData?.interactive_reply_type || null,
       interactiveReplyDescription: eventData?.interactive_reply_description || null,
+      reply_category: eventData?.reply_category || null,
+      reply_payload: eventData?.reply_payload || null,
       senderNumber,
       recipientNumber,
       messageType,
@@ -394,7 +399,10 @@ class AutomationEngine {
       if (sourceHandle && conn.sourceHandle) {
         return conn.sourceHandle === sourceHandle;
       }
-      return !sourceHandle;
+      if (sourceHandle) {
+        return !conn.sourceHandle;
+      }
+      return true;
     });
 
     const connectedIds = connections.map(conn => conn.target);
@@ -577,6 +585,7 @@ class AutomationEngine {
     }
 
     const fieldValue = this.getNestedValue(data, field);
+    const comparisonValues = this.getConditionComparisonValues(field, fieldValue, data);
 
     const strField = String(fieldValue ?? '').toLowerCase();
     const strValue = String(value ?? '').toLowerCase();
@@ -585,19 +594,31 @@ class AutomationEngine {
 
     switch (operator) {
       case 'equals':
-        return values.some(v => fieldValue == v);
+        return comparisonValues.some(candidate => values.some(v => candidate == v));
       case 'equals_any':
-        return values.some(v => fieldValue == v);
+        return comparisonValues.some(candidate => values.some(v => candidate == v));
       case 'not_equals':
-        return values.every(v => fieldValue != v);
+        return comparisonValues.every(candidate => values.every(v => candidate != v));
       case 'contains':
-        return normalizedValues.some(v => strField.includes(v));
+        return comparisonValues.some(candidate => {
+          const strCandidate = String(candidate ?? '').toLowerCase();
+          return normalizedValues.some(v => strCandidate.includes(v));
+        });
       case 'not_contains':
-        return normalizedValues.every(v => !strField.includes(v));
+        return comparisonValues.every(candidate => {
+          const strCandidate = String(candidate ?? '').toLowerCase();
+          return normalizedValues.every(v => !strCandidate.includes(v));
+        });
       case 'starts_with':
-        return normalizedValues.some(v => strField.startsWith(v));
+        return comparisonValues.some(candidate => {
+          const strCandidate = String(candidate ?? '').toLowerCase();
+          return normalizedValues.some(v => strCandidate.startsWith(v));
+        });
       case 'ends_with':
-        return normalizedValues.some(v => strField.endsWith(v));
+        return comparisonValues.some(candidate => {
+          const strCandidate = String(candidate ?? '').toLowerCase();
+          return normalizedValues.some(v => strCandidate.endsWith(v));
+        });
       case 'greater_than':
         return Number(fieldValue) > Number(value);
       case 'less_than':
@@ -614,12 +635,61 @@ class AutomationEngine {
         return fieldValue !== undefined && fieldValue !== null && fieldValue !== '';
       case 'contains_any':
         if (!Array.isArray(value)) {
-          return strField.includes(strValue);
+          return comparisonValues.some(candidate => String(candidate ?? '').toLowerCase().includes(strValue));
         }
-        return value.some(v => strField.includes(String(v).toLowerCase()));
+        return comparisonValues.some(candidate => {
+          const strCandidate = String(candidate ?? '').toLowerCase();
+          return value.some(v => strCandidate.includes(String(v).toLowerCase()));
+        });
       default:
         return true;
     }
+  }
+
+
+  getConditionComparisonValues(field, fieldValue, data) {
+    const values = [fieldValue];
+
+    if (field === 'message' || field === 'message.body') {
+      values.push(
+        data?.interactiveReplyId,
+        data?.interactiveReplyTitle,
+        data?.interactiveId,
+        data?.interactive_id,
+        data?.reply_payload,
+        data?.messagePayload?.interactive?.button_reply?.id,
+        data?.messagePayload?.interactive?.button_reply?.title,
+        data?.messagePayload?.interactive?.list_reply?.id,
+        data?.messagePayload?.interactive?.list_reply?.title,
+        data?.messagePayload?.button?.payload,
+        data?.messagePayload?.button?.text
+      );
+    }
+
+    return values.filter(value => value !== undefined && value !== null);
+  }
+
+
+  /**
+   * Resolve quick-reply / interactive reply fields from automation event data.
+   * Distinguishes template quick-replies (type "button") from interactive button_reply.
+   */
+  resolveReplyFields(obj) {
+    const payload = obj?.messagePayload;
+
+    return {
+      templateButtonText: payload?.button?.text || null,
+      templateButtonPayload: payload?.button?.payload || null,
+      interactiveButtonId: payload?.interactive?.button_reply?.id || null,
+      interactiveButtonTitle: payload?.interactive?.button_reply?.title || null,
+      listReplyId: payload?.interactive?.list_reply?.id || null,
+      listReplyTitle: payload?.interactive?.list_reply?.title || null,
+      replyCategory: obj?.reply_category || null,
+      replyId: obj?.interactiveReplyId || obj?.interactiveId || obj?.interactive_id || null,
+      replyTitle: obj?.interactiveReplyTitle || null,
+      replyPayload: obj?.reply_payload || null,
+      replyType: obj?.interactiveReplyType || null,
+    };
   }
 
 
@@ -639,13 +709,40 @@ class AutomationEngine {
     }
 
     if (path === 'interactive.id' || path === 'interactive.reply.id' || path === 'quick_reply.id') {
-      return obj.interactiveReplyId || obj.interactiveId || obj.interactive_id || obj.messagePayload?.interactive?.button_reply?.id || obj.messagePayload?.interactive?.list_reply?.id || obj.messagePayload?.button?.payload;
+      const reply = this.resolveReplyFields(obj);
+      return (
+        reply.replyId ||
+        reply.interactiveButtonId ||
+        reply.listReplyId ||
+        reply.templateButtonPayload ||
+        reply.templateButtonText
+      );
     }
     if (path === 'interactive.title' || path === 'interactive.reply.title' || path === 'quick_reply.title') {
-      return obj.interactiveReplyTitle || obj.messagePayload?.interactive?.button_reply?.title || obj.messagePayload?.interactive?.list_reply?.title || obj.messagePayload?.button?.text;
+      const reply = this.resolveReplyFields(obj);
+      return (
+        reply.replyTitle ||
+        reply.interactiveButtonTitle ||
+        reply.listReplyTitle ||
+        reply.templateButtonText ||
+        reply.templateButtonPayload
+      );
     }
     if (path === 'interactive.type' || path === 'quick_reply.type') {
-      return obj.interactiveReplyType || obj.messagePayload?.interactive?.type || obj.messagePayload?.type;
+      const reply = this.resolveReplyFields(obj);
+      if (reply.replyType) return reply.replyType;
+      if (reply.replyCategory) return reply.replyCategory;
+      // Backward compatibility: infer from raw webhook shape
+      if (obj.messagePayload?.type === 'button') {
+        return INCOMING_REPLY_CATEGORIES.TEMPLATE_QUICK_REPLY;
+      }
+      if (obj.messagePayload?.interactive?.type === 'button_reply') {
+        return 'button_reply';
+      }
+      if (obj.messagePayload?.interactive?.type === 'list_reply') {
+        return 'list_reply';
+      }
+      return obj.messagePayload?.interactive?.type || obj.messagePayload?.type;
     }
 
     if (path === 'contact_name') {
@@ -1497,6 +1594,8 @@ class AutomationEngine {
     const interactiveReplyId = eventData.interactive_reply_id || eventData.interactive_id || execution.input_data?.interactiveReplyId || null;
     const interactiveReplyTitle = eventData.interactive_reply_title || execution.input_data?.interactiveReplyTitle || null;
     const interactiveReplyType = eventData.interactive_reply_type || execution.input_data?.interactiveReplyType || null;
+    const replyCategory = eventData.reply_category || execution.input_data?.reply_category || null;
+    const replyPayload = eventData.reply_payload || execution.input_data?.reply_payload || null;
     const currentData = {
       ...execution.input_data,
       [variableName]: messageText,
@@ -1507,6 +1606,8 @@ class AutomationEngine {
       interactiveReplyId,
       interactiveReplyTitle,
       interactiveReplyType,
+      reply_category: replyCategory,
+      reply_payload: replyPayload,
       interactiveReplyDescription: eventData.interactive_reply_description || execution.input_data?.interactiveReplyDescription || null,
       sender: {
         phone: senderPhone,

@@ -21,6 +21,7 @@ router.post('/send', checkPlanLimit('conversations'), upload.fields([{ name: 'fi
 router.get('/messages', checkPermission('manage.conversations'), unifiedWhatsAppController.getMessages);
 router.get('/chats', checkPermission('manage.conversations'), unifiedWhatsAppController.getRecentChats);
 router.post('/pin-chat', checkPermission('manage.conversations'), unifiedWhatsAppController.togglePinChat);
+router.post('/mark-chat-read', checkPermission('manage.conversations'), unifiedWhatsAppController.markChatAsRead);
 router.post('/assign-chat', checkPermission('manage.conversations'), unifiedWhatsAppController.assignChatToAgent);
 router.get('/status', checkPermission('view.unified_whatsapp'), unifiedWhatsAppController.getConnectionStatus);
 router.post('/connect', checkPermission('create.unified_whatsapp'), unifiedWhatsAppController.connectWhatsApp);
@@ -30,9 +31,9 @@ router.post('/delete', checkPermission('delete.unified_whatsapp'), unifiedWhatsA
 router.post('/disconnect', checkPermission('update.unified_whatsapp'), unifiedWhatsAppController.disconnectWhatsApp);
 router.get('/connections', checkPermission('view.unified_whatsapp'), unifiedWhatsAppController.getUserConnections);
 router.get('/waba-list', checkPermission('view.unified_whatsapp'), unifiedWhatsAppController.getWabaList);
-router.get('/phone-numbers', checkPermission('view.unified_whatsapp'), unifiedWhatsAppController.getMyPhoneNumbers);
+router.get('/phone-numbers', checkPermission('manage.conversations'), unifiedWhatsAppController.getMyPhoneNumbers);
 router.put('/phone-numbers/:phoneNumberId/set-primary', checkPermission('update.unified_whatsapp'), unifiedWhatsAppController.setPrimaryPhoneNumber);
-router.get('/:wabaId/phone-numbers', checkPermission('view.unified_whatsapp'), unifiedWhatsAppController.getWabaPhoneNumbers);
+router.get('/:wabaId/phone-numbers', checkPermission('manage.conversations'), unifiedWhatsAppController.getWabaPhoneNumbers);
 router.post('/embedded-signup/connection', checkPermission('create.unified_whatsapp'), unifiedWhatsAppController.getEmbbededSignupConnection);
 router.get('/contact-profile', checkPermission('view.unified_whatsapp'), unifiedWhatsAppController.getContactProfile);
 export default router;

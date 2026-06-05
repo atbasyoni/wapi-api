@@ -1,4 +1,5 @@
 import unifiedWhatsAppService, { PROVIDER_TYPES } from '../services/whatsapp/unified-whatsapp.service.js';
+import { deduplicateChatsByPhone, sortChatsByRecentActivity } from '../services/whatsapp/chat-list.service.js';
 import { Message, ContactTag, ChatNote, WhatsappWaba, WhatsappPhoneNumber, Contact, Tag, ChatAssignment, User } from '../models/index.js';
 import { uploadSingle } from '../utils/upload.js';
 import { Setting } from '../models/index.js';
@@ -870,9 +871,14 @@ export const getMessages = async (req, res) => {
     const groupedMessages = groupMessagesByDateAndSender(baseMessages, replyMessagesMap, reactionsMap);
 
 
+    // Ensure date groups are returned in chronological order
+    const sortedMessages = Object.values(groupedMessages).sort((a, b) =>
+      a.dateKey.localeCompare(b.dateKey)
+    );
+
     return res.json({
       success: true,
-      messages: Object.values(groupedMessages)
+      messages: sortedMessages
     });
   } catch (error) {
     console.error('Error retrieving messages:', error);
@@ -954,7 +960,8 @@ export const getRecentChats = async (req, res) => {
       start_date: startDateParam,
       end_date: endDateParam,
       is_assigned: isAssignedParam,
-      agent_id: agentIdParam
+      agent_id: agentIdParam,
+      chat_status: chatStatusParam
     } = req.query;
 
     const providerType = provider || null;
@@ -998,14 +1005,31 @@ export const getRecentChats = async (req, res) => {
     }
 
     if (resolvedWhatsappPhoneNumberId) {
-      const whatsappPhoneNumber = await WhatsappPhoneNumber.findById(resolvedWhatsappPhoneNumberId)
+      let whatsappPhoneNumber = await WhatsappPhoneNumber.findById(resolvedWhatsappPhoneNumberId)
         .populate('waba_id')
         .lean();
 
+      // Fallback when cached/stale phone id no longer exists — use first available number
       if (!whatsappPhoneNumber || !whatsappPhoneNumber.waba_id) {
-        return res.status(404).json({
-          success: false,
-          error: 'WhatsApp Phone Number not found'
+        whatsappPhoneNumber = await WhatsappPhoneNumber.findOne({
+          user_id: userId,
+          deleted_at: null,
+          $or: [{ is_active: true }, { is_active: { $exists: false } }]
+        })
+          .populate('waba_id')
+          .sort({ is_primary: -1, createdAt: -1 })
+          .lean();
+
+        if (whatsappPhoneNumber) {
+          resolvedWhatsappPhoneNumberId = whatsappPhoneNumber._id.toString();
+        }
+      }
+
+      if (!whatsappPhoneNumber || !whatsappPhoneNumber.waba_id) {
+        return res.status(200).json({
+          success: true,
+          data: [],
+          message: 'No WhatsApp phone number found for this account'
         });
       }
 
@@ -1069,15 +1093,13 @@ export const getRecentChats = async (req, res) => {
         };
       }
     }
-    console.log("connection", !connection);
-
     if (!connection) {
       return res.status(200).json({
         success: true,
         data: []
       });
     }
-    console.log("called")
+
     const chats = await unifiedWhatsAppService.getRecentChats(userId, providerType, null, connection);
 
     let filteredChats = chats;
@@ -1290,15 +1312,6 @@ export const getRecentChats = async (req, res) => {
       filteredChats = filteredChats.filter(chat => contactIdsWithNotes.has(chat.contact?.id));
     }
 
-    if (filterLastMessageRead !== null) {
-      filteredChats = filteredChats.filter(chat => {
-        const last = chat.lastMessage;
-        if (!last) return false;
-        const isRead = last.is_seen === true || last.read_status === 'read' || last.read_status === 'read_by_multiple';
-        return filterLastMessageRead ? isRead : !isRead;
-      });
-    }
-
     if (filterStartDate || filterEndDate) {
       filteredChats = filteredChats.filter(chat => {
         const createdAt = chat.lastMessage?.createdAt;
@@ -1310,12 +1323,56 @@ export const getRecentChats = async (req, res) => {
       });
     }
 
-    filteredChats = filteredChats.sort((a, b) => {
-      const aPinned = a.is_pinned === true;
-      const bPinned = b.is_pinned === true;
-      if (aPinned === bPinned) return 0;
-      return aPinned ? -1 : 1;
-    });
+    const filterChatStatus = chatStatusParam && String(chatStatusParam).trim()
+      ? String(chatStatusParam).trim()
+      : null;
+
+    if (filterChatStatus) {
+      filteredChats = filteredChats.filter(chat =>
+        (chat.contact?.chat_status || 'open') === filterChatStatus
+      );
+    }
+
+    // Merge duplicate conversations caused by inconsistent phone number formats
+    filteredChats = deduplicateChatsByPhone(filteredChats);
+
+    // Compute unread counts before the Unread tab filter so it works even when
+    // the last message is outbound (business reply) but earlier inbound msgs are unread.
+    let unreadCountMap = {};
+    if (filteredChats.length > 0 && myPhoneNumber) {
+      const unreadCounts = await Message.aggregate([
+        {
+          $match: {
+            recipient_number: myPhoneNumber,
+            sender_number: { $in: filteredChats.map(c => c.contact.number) },
+            deleted_at: null,
+            $or: [
+              { is_seen: false },
+              { read_status: 'unread' }
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: '$sender_number',
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      unreadCountMap = unreadCounts.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {});
+    }
+
+    if (filterLastMessageRead !== null) {
+      filteredChats = filteredChats.filter(chat => {
+        const unreadCount = unreadCountMap[chat.contact.number] || 0;
+        const hasUnread = unreadCount > 0;
+        return filterLastMessageRead ? !hasUnread : hasUnread;
+      });
+    }
 
     const isAssignedFilter = isAssignedParam === 'true' ? true : (isAssignedParam === 'false' ? false : null);
     const agentIdFilter = agentIdParam || null;
@@ -1355,37 +1412,22 @@ export const getRecentChats = async (req, res) => {
       }
     }
 
-    if (filteredChats.length > 0) {
-      const unreadCounts = await Message.aggregate([
-        {
-          $match: {
-            recipient_number: myPhoneNumber,
-            sender_number: { $in: filteredChats.map(c => c.contact.number) },
-            deleted_at: null,
-            $or: [
-              { is_seen: false },
-              { read_status: 'unread' }
-            ]
-          }
-        },
-        {
-          $group: {
-            _id: '$sender_number',
-            count: { $sum: 1 }
-          }
-        }
-      ]);
-
-      const unreadCountMap = unreadCounts.reduce((acc, item) => {
-        acc[item._id] = item.count;
-        return acc;
-      }, {});
-
-      filteredChats = filteredChats.map(chat => ({
+    filteredChats = filteredChats.map(chat => {
+      const unreadCount = unreadCountMap[chat.contact.number] || 0;
+      return {
         ...chat,
-        unread_count: unreadCountMap[chat.contact.number] || 0
-      }));
-    }
+        unread_count: unreadCount,
+        lastMessage: chat.lastMessage
+          ? {
+            ...chat.lastMessage,
+            unreadCount: String(unreadCount)
+          }
+          : chat.lastMessage
+      };
+    });
+
+    // WhatsApp-style ordering: pinned first, then most recent message
+    filteredChats = sortChatsByRecentActivity(filteredChats);
 
     return res.json({
       success: true,
@@ -1853,92 +1895,59 @@ export const getUserConnections = async (req, res) => {
 
 export const getMyPhoneNumbers = async (req, res) => {
   try {
-    let effectiveUserId = req.user.id;
+    const effectiveUserId = req.user.owner_id || req.user.id;
+    const { workspace_id: workspaceId, waba_id: wabaIdParam } = req.query;
 
-    if (req.user.role === "agent") {
-      const agent = await User.findById(req.user.id)
-        .select("created_by")
-        .lean();
-
-      if (agent?.created_by) {
-        effectiveUserId = agent.created_by;
+    const buildPhoneQuery = (restrictToWabaId = null) => {
+      const query = {
+        user_id: effectiveUserId,
+        deleted_at: null,
+        $or: [{ is_active: true }, { is_active: { $exists: false } }]
+      };
+      if (restrictToWabaId) {
+        query.waba_id = restrictToWabaId;
       }
-    }
-    console.log("effectiveUserId", effectiveUserId);
-    const wabas = await WhatsappWaba.find({
-      user_id: effectiveUserId,
-      is_active: true,
-      deleted_at: null
-    })
-      .sort({ created_at: -1 })
-      .lean();
+      return query;
+    };
 
-    if (wabas.length === 0) {
-      return res.json({
-        success: true,
-        data: [],
-        total_wabas: 0,
-        total_phone_numbers: 0
-      });
+    let restrictWabaId = null;
+
+    if (wabaIdParam) {
+      restrictWabaId = wabaIdParam;
+    } else if (workspaceId) {
+      const waba = await WhatsappWaba.findOne({
+        workspace_id: workspaceId,
+        user_id: effectiveUserId,
+        deleted_at: null
+      }).lean();
+      restrictWabaId = waba?._id || null;
     }
 
-    const allPhoneNumbers = await WhatsappPhoneNumber.find({
-      user_id: effectiveUserId,
-      is_active: true,
-      deleted_at: null
-    })
-      .populate("waba_id")
-      .sort({ created_at: -1 })
+    let allPhoneNumbers = await WhatsappPhoneNumber.find(buildPhoneQuery(restrictWabaId))
+      .sort({ is_primary: -1, createdAt: -1 })
       .lean();
 
-    const enrichedPhoneNumbers = await Promise.all(
-      allPhoneNumbers.map(async (phone) => {
-        let verified_name = phone.verified_name;
-        let quality_rating = phone.quality_rating;
+    // If workspace filter found nothing, fall back to all phones for this user
+    if (allPhoneNumbers.length === 0) {
+      allPhoneNumbers = await WhatsappPhoneNumber.find(buildPhoneQuery(null))
+        .sort({ is_primary: -1, createdAt: -1 })
+        .lean();
+    }
 
-        if (phone.waba_id?.access_token) {
-          try {
-            const response = await axios.get(
-              `https://graph.facebook.com/v22.0/${phone.phone_number_id}`,
-              {
-                params: { fields: "verified_name,quality_rating" },
-                headers: {
-                  Authorization: `Bearer ${phone.waba_id.access_token}`
-                }
-              }
-            );
-
-            verified_name = response.data.verified_name || verified_name;
-            quality_rating = response.data.quality_rating || quality_rating;
-          } catch (err) {
-            console.error(
-              `Failed to fetch WhatsApp details for ${phone.phone_number_id}`,
-              err.message
-            );
-          }
-        }
-
-        return {
-          display_phone_number: phone.display_phone_number,
-          id: phone._id,
-          is_primary: phone.is_primary
-        };
-      })
-    );
-
-    const sortedPhoneNumbers = enrichedPhoneNumbers.sort((a, b) => {
-      if (a.is_primary && !b.is_primary) return -1;
-      if (!a.is_primary && b.is_primary) return 1;
-      return 0;
-    });
+    const sortedPhoneNumbers = allPhoneNumbers.map((phone) => ({
+      id: phone._id.toString(),
+      display_phone_number: phone.display_phone_number,
+      phone_number_id: phone.phone_number_id,
+      verified_name: phone.verified_name || phone.display_phone_number,
+      is_primary: phone.is_primary || false,
+      waba_id: phone.waba_id?.toString() || null
+    }));
 
     return res.json({
       success: true,
       data: sortedPhoneNumbers,
-      total_wabas: wabas.length,
       total_phone_numbers: sortedPhoneNumbers.length
     });
-
   } catch (error) {
     console.error("Error getting user phone numbers:", error);
     return res.status(500).json({
@@ -1953,79 +1962,62 @@ export const getWabaPhoneNumbers = async (req, res) => {
   try {
     const userId = req.user.owner_id;
     const { wabaId } = req.params;
+    const { workspace_id: workspaceId } = req.query;
     const { page, limit, skip } = parsePaginationParams(req.query);
 
-    const waba = await WhatsappWaba.findOne({
+    let waba = await WhatsappWaba.findOne({
       _id: wabaId,
       user_id: userId,
       deleted_at: null
-    });
+    }).lean();
+
+    if (!waba && workspaceId) {
+      waba = await WhatsappWaba.findOne({
+        workspace_id: workspaceId,
+        user_id: userId,
+        deleted_at: null
+      }).lean();
+    }
 
     if (!waba) {
-      return res.status(404).json({
-        success: false,
-        error: 'WABA not found'
+      return res.json({
+        success: true,
+        data: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: limit
+        }
       });
     }
 
-    const totalPhoneNumbers = await WhatsappPhoneNumber.countDocuments({
-      user_id: userId,
-      waba_id: wabaId,
-      deleted_at: null
-    });
+    const resolvedWabaId = waba._id;
 
-    const phoneNumbers = await WhatsappPhoneNumber.find({
+    const phoneQuery = {
       user_id: userId,
-      waba_id: wabaId,
-      deleted_at: null
-    })
-      .sort({ created_at: -1 })
+      waba_id: resolvedWabaId,
+      deleted_at: null,
+      $or: [{ is_active: true }, { is_active: { $exists: false } }]
+    };
+
+    const totalPhoneNumbers = await WhatsappPhoneNumber.countDocuments(phoneQuery);
+
+    const phoneNumbers = await WhatsappPhoneNumber.find(phoneQuery)
+      .sort({ is_primary: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    const enrichedPhoneNumbers = await Promise.all(
-      phoneNumbers.map(async (phone) => {
-        let verified_name = phone.verified_name;
-        let quality_rating = phone.quality_rating;
-
-        try {
-          const response = await axios.get(
-            `https://graph.facebook.com/v22.0/${phone.phone_number_id}`,
-            {
-              params: {
-                fields: 'verified_name,quality_rating'
-              },
-              headers: {
-                Authorization: `Bearer ${waba.access_token}`
-              }
-            }
-          );
-          verified_name = response.data.verified_name || verified_name;
-          quality_rating = response.data.quality_rating || quality_rating;
-        } catch (err) {
-          console.error(
-            `Failed to fetch WhatsApp details for ${phone.phone_number_id}`,
-            err.message
-          );
-        }
-
-        return {
-          id: phone._id,
-          phone_number_id: phone.phone_number_id,
-          verified_name: verified_name ?? "N/A",
-          quality_rating: quality_rating ?? "N/A",
-          display_phone_number: phone.display_phone_number,
-          is_primary: phone.is_primary
-        };
-      })
-    );
-
-    const sortedPhoneNumbers = enrichedPhoneNumbers.sort((a, b) => {
-      if (a.is_primary && !b.is_primary) return -1;
-      if (!a.is_primary && b.is_primary) return 1;
-      return 0;
-    });
+    const sortedPhoneNumbers = phoneNumbers.map((phone) => ({
+      id: phone._id.toString(),
+      phone_number_id: phone.phone_number_id,
+      verified_name: phone.verified_name || phone.display_phone_number || 'N/A',
+      quality_rating: phone.quality_rating || 'N/A',
+      display_phone_number: phone.display_phone_number,
+      is_primary: phone.is_primary || false,
+      waba_id: resolvedWabaId.toString()
+    }));
 
     return res.json({
       success: true,
@@ -2036,7 +2028,7 @@ export const getWabaPhoneNumbers = async (req, res) => {
         totalItems: totalPhoneNumbers,
         itemsPerPage: limit
       },
-      waba_id: wabaId,
+      waba_id: resolvedWabaId.toString(),
       waba_name: waba.name
     });
   } catch (error) {
@@ -2533,12 +2525,91 @@ export const getWabaList = async (req, res) => {
   }
 };
 
+export const markChatAsRead = async (req, res) => {
+  try {
+    const userId = req.user.owner_id;
+    const { contact_id: contactId, whatsapp_phone_number_id: whatsappPhoneNumberId } = req.body;
+
+    if (!contactId || !whatsappPhoneNumberId) {
+      return res.status(400).json({
+        success: false,
+        error: 'contact_id and whatsapp_phone_number_id are required'
+      });
+    }
+
+    const contact = await Contact.findById(contactId).lean();
+    if (!contact) {
+      return res.status(404).json({
+        success: false,
+        error: 'Contact not found'
+      });
+    }
+
+    const whatsappPhoneNumber = await WhatsappPhoneNumber.findById(whatsappPhoneNumberId).lean();
+    if (!whatsappPhoneNumber) {
+      return res.status(404).json({
+        success: false,
+        error: 'WhatsApp Phone Number not found'
+      });
+    }
+
+    if (req.user.role === 'agent') {
+      const allowed = await getAgentAllowedPhoneNumber(req.user.id, contact.phone_number, whatsappPhoneNumberId);
+      if (!allowed) {
+        return res.status(403).json({
+          success: false,
+          error: 'You do not have access to this chat'
+        });
+      }
+    }
+
+    const myPhoneNumber = whatsappPhoneNumber.display_phone_number;
+    const now = new Date();
+
+    const result = await Message.updateMany(
+      {
+        sender_number: contact.phone_number,
+        recipient_number: myPhoneNumber,
+        deleted_at: null,
+        $or: [
+          { is_seen: false },
+          { read_status: 'unread' }
+        ]
+      },
+      {
+        $set: {
+          is_seen: true,
+          seen_at: now,
+          read_status: 'read',
+          wa_status: 'read',
+          wa_status_timestamp: now
+        }
+      }
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        modifiedCount: result.modifiedCount
+      }
+    });
+  } catch (error) {
+    console.error('Error marking chat as read:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to mark chat as read',
+      details: error.message
+    });
+  }
+};
+
 export default {
   sendMessage,
   getContactProfile,
   getMessages,
   togglePinChat,
   getRecentChats,
+  markChatAsRead,
   assignChatToAgent,
   getConnectionStatus,
   connectWhatsApp,

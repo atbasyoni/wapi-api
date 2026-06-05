@@ -773,51 +773,8 @@ export default class BaileysProvider extends BaseProvider {
     }
 
     async getRecentChats(userId, connection = null) {
-        const myNumber = connection.registred_phone_number;
-        const sentMessages = await Message.distinct('recipient_number', {
-            sender_number: myNumber,
-            recipient_number: { $ne: null },
-            deleted_at: null
-        });
-
-        const receivedMessages = await Message.distinct('sender_number', {
-            recipient_number: myNumber,
-            sender_number: { $ne: null },
-            deleted_at: null
-        });
-
-        const numbers = [...new Set([...sentMessages, ...receivedMessages])].filter(n => n && n !== myNumber);
-
-        const chats = await Promise.all(numbers.map(async (num) => {
-            const lastMessage = await Message.findOne({
-                $or: [
-                    { sender_number: myNumber, recipient_number: num },
-                    { sender_number: num, recipient_number: myNumber }
-                ],
-                deleted_at: null
-            }).sort({ wa_timestamp: -1 }).lean();
-
-            let contact = await Contact.findOne({ phone_number: num, created_by: userId });
-
-            return {
-                contact: {
-                    id: contact?._id,
-                    number: num,
-                    name: contact?.name || num,
-                    avatar: null
-                },
-                lastMessage: lastMessage ? {
-                    id: lastMessage._id,
-                    content: lastMessage.content,
-                    messageType: lastMessage.message_type,
-                    direction: lastMessage.direction,
-                    fromMe: lastMessage.from_me,
-                    createdAt: lastMessage.wa_timestamp
-                } : null
-            };
-        }));
-
-        return chats.sort((a, b) => (b.lastMessage?.createdAt || 0) - (a.lastMessage?.createdAt || 0));
+        const { getRecentChatsFromMessages } = await import('../chat-list.service.js');
+        return getRecentChatsFromMessages(connection.registred_phone_number);
     }
 
     getMediaTypeFromUrl(url) {

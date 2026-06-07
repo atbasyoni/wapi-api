@@ -8,11 +8,12 @@ async function seedLanguage() {
     const languages = [
       { name: 'English', locale: 'en', is_rtl: false, is_active: true, is_default: true, sort_order: 1 },
       { name: 'Arabic', locale: 'ar', is_rtl: true, is_active: true, is_default: false, sort_order: 2 },
-      { name: 'Spanish', locale: 'es', is_rtl: false, is_active: true, is_default: false, sort_order: 3 },
-      { name: 'Portuguese', locale: 'pt', is_rtl: false, is_active: true, is_default: false, sort_order: 4 },
-      { name: 'German', locale: 'de', is_rtl: false, is_active: true, is_default: false, sort_order: 5 },
-      { name: 'French', locale: 'fr', is_rtl: false, is_active: true, is_default: false, sort_order: 6 },
     ];
+
+    await Language.updateMany(
+      { locale: { $nin: ['en', 'ar'] }, deleted_at: null },
+      { $set: { deleted_at: new Date(), is_active: false } }
+    );
 
     for (const languageData of languages) {
       let sourceLocale = languageData.locale;

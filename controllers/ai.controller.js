@@ -147,45 +147,8 @@ export const suggestReply = async (req, res) => {
 
 function getLanguageName(code) {
   const languages = {
-    'en': 'English',
-    'es': 'Spanish',
-    'fr': 'French',
-    'de': 'German',
-    'it': 'Italian',
-    'pt': 'Portuguese',
-    'ru': 'Russian',
-    'ja': 'Japanese',
-    'ko': 'Korean',
-    'zh': 'Chinese',
-    'ar': 'Arabic',
-    'hi': 'Hindi',
-    'nl': 'Dutch',
-    'pl': 'Polish',
-    'tr': 'Turkish',
-    'sv': 'Swedish',
-    'da': 'Danish',
-    'no': 'Norwegian',
-    'fi': 'Finnish',
-    'cs': 'Czech',
-    'hu': 'Hungarian',
-    'ro': 'Romanian',
-    'th': 'Thai',
-    'vi': 'Vietnamese',
-    'id': 'Indonesian',
-    'ms': 'Malay',
-    'he': 'Hebrew',
-    'uk': 'Ukrainian',
-    'el': 'Greek',
-    'bg': 'Bulgarian',
-    'hr': 'Croatian',
-    'sk': 'Slovak',
-    'sl': 'Slovenian',
-    'et': 'Estonian',
-    'lv': 'Latvian',
-    'lt': 'Lithuanian',
-    'ga': 'Irish',
-    'mt': 'Maltese',
-    'cy': 'Welsh'
+    en: 'English',
+    ar: 'Arabic'
   };
   return languages[code] || code;
 }

@@ -3,6 +3,7 @@ import unifiedWhatsAppService from '../services/whatsapp/unified-whatsapp.servic
 import { getSheetsClient, getCalendarClient, handleGoogleApiError } from './google-api-helper.js';
 import { PROVIDER_TYPES } from '../services/whatsapp/unified-whatsapp.service.js';
 import appointmentService from '../services/appointment.service.js';
+import orderCustomerResponseService from '../services/order-customer-response.service.js';
 import automationCache from './automation-cache.js';
 import { INCOMING_REPLY_CATEGORIES } from './whatsapp-incoming-reply.constants.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -481,6 +482,9 @@ class AutomationEngine {
           break;
       case 'response_saver':
         result = await this.executeResponseSaverNode(node, inputData);
+        break;
+      case 'save_order_customer_response':
+        result = await this.executeSaveOrderCustomerResponseNode(node, inputData);
         break;
       case 'api':
         result = await this.executeApiNode(node, inputData);
@@ -1342,6 +1346,99 @@ class AutomationEngine {
     }
   }
 
+
+  resolveNodeParameterValue(rawValue, inputData) {
+    if (rawValue === null || rawValue === undefined || rawValue === '') {
+      return null;
+    }
+
+    if (typeof rawValue === 'string' && (rawValue.includes('{{') || rawValue.includes('}}'))) {
+      const resolved = this.processTemplateString(rawValue, inputData);
+      if (resolved === rawValue && rawValue.startsWith('{{') && rawValue.endsWith('}}')) {
+        const path = rawValue.replace(/^\{\{|\}\}$/g, '').trim();
+        const nested = this.getNestedValue(inputData, path);
+        return nested !== undefined ? nested : null;
+      }
+      return resolved;
+    }
+
+    if (typeof rawValue === 'string') {
+      const nested = this.getNestedValue(inputData, rawValue);
+      return nested !== undefined ? nested : rawValue;
+    }
+
+    return rawValue;
+  }
+
+  async executeSaveOrderCustomerResponseNode(node, inputData) {
+    const params = node.parameters || {};
+    const userId = inputData.userId || inputData.user_id;
+    const contactId = inputData.contactId || inputData.contact?._id;
+
+    if (!userId) {
+      return { success: false, output: inputData, error: 'User ID is required to save order customer response' };
+    }
+
+    const orderId = this.resolveNodeParameterValue(
+      params.order_id || params.orderId || inputData.order_id || inputData.orderId || inputData.ecommerceOrderId,
+      inputData
+    );
+    const waOrderId = this.resolveNodeParameterValue(
+      params.wa_order_id || params.waOrderId || inputData.wa_order_id,
+      inputData
+    );
+
+    if (!orderId && !waOrderId && !contactId) {
+      return { success: false, output: inputData, error: 'order_id, wa_order_id, or contactId is required' };
+    }
+
+    const fieldKeys = [
+      'confirmation_status',
+      'delivery_address',
+      'latitude',
+      'longitude',
+      'delivery_address_details',
+      'delivery_method_selection',
+      'another_person_number'
+    ];
+
+    const fields = {};
+    for (const key of fieldKeys) {
+      if (!Object.prototype.hasOwnProperty.call(params, key)) continue;
+      const value = this.resolveNodeParameterValue(params[key], inputData);
+      if (value !== null && value !== undefined && value !== '') {
+        fields[key] = value;
+      }
+    }
+
+    const waMessageId =
+      inputData.messagePayload?.id ||
+      inputData.wa_message_id ||
+      inputData.messageId ||
+      null;
+
+    try {
+      const doc = await orderCustomerResponseService.upsertOrderCustomerResponse({
+        userId,
+        orderId,
+        waOrderId,
+        contactId,
+        fields,
+        waMessageId
+      });
+
+      return {
+        success: true,
+        output: {
+          ...inputData,
+          order_customer_response: doc,
+          orderCustomerResponse: doc
+        }
+      };
+    } catch (err) {
+      return { success: false, output: inputData, error: err.message };
+    }
+  }
 
   async executeResponseSaverNode(node, inputData) {
     const { mappings } = node.parameters || {};

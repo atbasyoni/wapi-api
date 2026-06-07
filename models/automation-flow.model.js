@@ -46,6 +46,7 @@ const automationFlowSchema = new mongoose.Schema({
             'assign_chatbot',
             'update_contact',
             'response_saver',
+            'save_order_customer_response',
             'save_to_google_sheet',
             'create_calendar_event',
             'appointment_flow',

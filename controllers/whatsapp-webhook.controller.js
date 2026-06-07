@@ -1,4 +1,4 @@
-import { WhatsappPhoneNumber, Message, EcommerceOrder, User, AppointmentBooking, AppointmentConfig, Contact, FacebookAdCampaign, AutomationFlow } from '../models/index.js';
+import { WhatsappPhoneNumber, Message, EcommerceOrder, User, AppointmentBooking, AppointmentConfig, Contact, FacebookAdCampaign, AutomationFlow, Setting } from '../models/index.js';
 import {
   isWithinWorkingHours,
   findMatchingBot,
@@ -16,18 +16,48 @@ import automationEngine from '../utils/automation-engine.js';
 import { updateWhatsAppStatus } from '../utils/message-status.service.js';
 import { updateCampaignStatsFromWhatsApp } from '../utils/campaign-stats.service.js';
 import { sendPushNotification } from '../utils/one-signal.js';
+import orderCustomerResponseService from '../services/order-customer-response.service.js';
 
 
-export const handleWebhookVerification = (req, res) => {
-  console.log("called");
+const getAcceptedVerifyTokens = async () => {
+  const tokens = new Set(
+    [process.env.WHATSAPP_VERIFY_TOKEN]
+      .filter((value) => typeof value === 'string' && value.trim().length > 0)
+  );
+
+  try {
+    const settings = await Setting.findOne()
+      .select('webhook_verification_token')
+      .lean();
+
+    if (settings?.webhook_verification_token?.trim()) {
+      tokens.add(settings.webhook_verification_token.trim());
+    }
+  } catch (error) {
+    console.error('[Webhook] Failed to load verification token from settings:', error.message);
+  }
+
+  return tokens;
+};
+
+export const handleWebhookVerification = async (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+  if (mode !== 'subscribe' || !token) {
+    console.warn('[Webhook] Verification rejected: missing subscribe mode or verify token');
+    return res.sendStatus(403);
+  }
+
+  const acceptedTokens = await getAcceptedVerifyTokens();
+
+  if (acceptedTokens.has(token)) {
+    console.log('[Webhook] Verification succeeded');
     return res.status(200).send(challenge);
   }
 
+  console.warn('[Webhook] Verification rejected: token mismatch');
   return res.sendStatus(403);
 };
 
@@ -493,9 +523,19 @@ export const handleIncomingMessage = async (req, res, io = null) => {
           raw_payload: message
         });
 
+        contactDoc.metadata = {
+          ...(contactDoc.metadata || {}),
+          pending_order_id: createdOrder._id?.toString(),
+          pending_wa_order_id: createdOrder.wa_order_id || null
+        };
+        contactDoc.markModified('metadata');
+        await contactDoc.save();
+
         try {
           await automationEngine.triggerEvent("order_received", {
             order_id: createdOrder._id?.toString(),
+            orderId: createdOrder._id?.toString(),
+            ecommerceOrderId: createdOrder._id?.toString(),
             wa_order_id: createdOrder.wa_order_id,
             wa_message_id: createdOrder.wa_message_id,
             total_price: createdOrder.total_price,
@@ -516,6 +556,21 @@ export const handleIncomingMessage = async (req, res, io = null) => {
       }
     }
 
+
+    try {
+      await orderCustomerResponseService.processInboundCustomerReply({
+        userId: whatsappPhoneNumber.user_id,
+        contactId: contactDoc._id,
+        message,
+        incomingReply,
+        content,
+        waMessageId: message.id,
+        pendingOrderId: contactDoc.metadata?.pending_order_id || null,
+        pendingWaOrderId: contactDoc.metadata?.pending_wa_order_id || null
+      });
+    } catch (orderResponseError) {
+      console.error('Error saving order customer response:', orderResponseError);
+    }
 
     try {
       const replyFields = toAutomationReplyFields(incomingReply);

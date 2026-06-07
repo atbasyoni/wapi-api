@@ -54,6 +54,7 @@ import UserSetting from './user-setting.model.js';
 import EcommerceCatalog from './ecommerce-catalog.model.js';
 import EcommerceProduct from './ecommerce-product.model.js';
 import EcommerceOrder from './ecommerce-order.model.js';
+import EcommerceOrderCustomerResponse from './ecommerce-order-customer-response.model.js';
 import EcommerceOrderStatusTemplate from './ecommerce-order-status-template.model.js';
 import LandingPage from './landing-page.model.js';
 import ApiKey from './api-key.model.js';
@@ -141,6 +142,7 @@ const db = {
   EcommerceCatalog,
   EcommerceProduct,
   EcommerceOrder,
+  EcommerceOrderCustomerResponse,
   EcommerceOrderStatusTemplate,
   LandingPage,
   ApiKey,
@@ -229,5 +231,5 @@ export {
   FacebookLeadForm,
   FacebookLead,
   Segment,
-  Plan, Template, Webhook, Subscription, PaymentHistory, AIModel, AgentTask, AutomationFlow, AutomationExecution, ChatAssignment, Contact, CustomField, Tag, Attachment, Campaign, UserSetting, EcommerceCatalog, EcommerceProduct, EcommerceOrder, EcommerceOrderStatusTemplate, LandingPage, ApiKey, Widget, ShortLink, ImportJob, ReplyMaterial, WorkingHours, Workspace, Sequence, SequenceStep, WabaConfiguration, Tax, GoogleAccount, GoogleCalendar, GoogleSheet, QuickReply, QuickReplyFavorite, KanbanFunnel , KanbanItem , connectDB
+  Plan, Template, Webhook, Subscription, PaymentHistory, AIModel, AgentTask, AutomationFlow, AutomationExecution, ChatAssignment, Contact, CustomField, Tag, Attachment, Campaign, UserSetting, EcommerceCatalog, EcommerceProduct, EcommerceOrder, EcommerceOrderCustomerResponse, EcommerceOrderStatusTemplate, LandingPage, ApiKey, Widget, ShortLink, ImportJob, ReplyMaterial, WorkingHours, Workspace, Sequence, SequenceStep, WabaConfiguration, Tax, GoogleAccount, GoogleCalendar, GoogleSheet, QuickReply, QuickReplyFavorite, KanbanFunnel , KanbanItem , connectDB
 };

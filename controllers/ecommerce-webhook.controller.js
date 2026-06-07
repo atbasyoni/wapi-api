@@ -138,6 +138,7 @@ const startOrderAutomationContext = async ({
       eventType: "orderReceived",
       orderPayload: payload,
       webhookPayload: payload,
+      order_id: order?._id?.toString() || null,
       orderId: order?._id?.toString() || null,
       ecommerceOrderId: order?._id?.toString() || null,
       webhookId: webhook._id?.toString(),
@@ -715,6 +716,15 @@ export const triggerWebhook = async (req, res) => {
       webhookToken: token,
       payload
     });
+
+    if (order?._id) {
+      await Contact.findByIdAndUpdate(contact._id, {
+        $set: {
+          'metadata.pending_order_id': order._id.toString(),
+          'metadata.pending_wa_order_id': order.wa_order_id || null
+        }
+      });
+    }
 
     const templateComponents = [];
     const bodyVars = template.body_variables || [];

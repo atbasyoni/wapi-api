@@ -1,5 +1,6 @@
 import { EcommerceOrder, EcommerceOrderStatusTemplate, EcommerceProduct, WhatsappPhoneNumber } from '../models/index.js';
 import UnifiedWhatsAppService from '../services/whatsapp/unified-whatsapp.service.js';
+import orderCustomerResponseService from '../services/order-customer-response.service.js';
 import { ECOMMERCE_ORDER_STATUSES } from '../models/ecommerce-order.model.js';
 
 const DEFAULT_PAGE = 1;
@@ -146,15 +147,19 @@ export const getUserOrders = async (req, res) => {
         };
         return pa;
       });
-      let paa = { ...order, items };
-      console.log("products" , paa);
-      return paa;
+      return { ...order, items };
     });
+
+    const ordersWithResponses = await orderCustomerResponseService.attachToOrders(ordersWithProductDetails);
+    const formattedOrders = ordersWithResponses.map((order) => ({
+      ...order,
+      customer_response: orderCustomerResponseService.formatCustomerResponse(order.customer_response)
+    }));
 
     return res.json({
       success: true,
       data: {
-        orders: ordersWithProductDetails,
+        orders: formattedOrders,
         pagination: {
           currentPage: page,
           totalPages: Math.ceil(totalCount / limit),
@@ -225,9 +230,12 @@ export const getOrderById = async (req, res) => {
       });
     }
 
+    const customerResponseDoc = await orderCustomerResponseService.getByOrderId(userId, order._id);
+
     const orderWithProductDetails = {
       ...order.toObject(),
-      items: itemsWithProductDetails
+      items: itemsWithProductDetails,
+      customer_response: orderCustomerResponseService.formatCustomerResponse(customerResponseDoc)
     };
 
     return res.json({
@@ -618,9 +626,44 @@ export const bulkDeleteOrders = async (req, res) => {
   }
 };
 
+export const getOrderCustomerResponse = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { order_id } = req.params;
+
+    const order = await EcommerceOrder.findOne({
+      _id: order_id,
+      user_id: userId,
+      deleted_at: null
+    }).select('_id').lean();
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found'
+      });
+    }
+
+    const customerResponse = await orderCustomerResponseService.getByOrderId(userId, order._id);
+
+    return res.json({
+      success: true,
+      data: orderCustomerResponseService.formatCustomerResponse(customerResponse)
+    });
+  } catch (error) {
+    console.error('Error getting order customer response:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to get order customer response',
+      details: error.message
+    });
+  }
+};
+
 export default {
   getUserOrders,
   getOrderById,
+  getOrderCustomerResponse,
   getOrdersByMessageId,
   getOrderStats,
   updateOrderStatus,

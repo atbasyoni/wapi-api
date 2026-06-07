@@ -805,6 +805,71 @@ export const getAvailableNodeTypes = async (req, res) => {
         ]
       },
       {
+        id: 'save_order_customer_response',
+        name: 'Save Order Customer Response',
+        description: 'Save customer order confirmation and delivery details linked to an order',
+        category: 'action',
+        icon: 'save',
+        inputs: 1,
+        outputs: 1,
+        parameters: [
+          {
+            name: 'order_id',
+            type: 'text',
+            label: 'Order ID (supports {{variable}})',
+            placeholder: '{{orderId}}'
+          },
+          {
+            name: 'wa_order_id',
+            type: 'text',
+            label: 'WA Order ID fallback (supports {{variable}})',
+            placeholder: '{{wa_order_id}}'
+          },
+          {
+            name: 'confirmation_status',
+            type: 'text',
+            label: 'Confirmation status (تأكيد الاوردر / تأجيل التسليم / إلغاء الاوردر)',
+            placeholder: '{{interactiveReplyTitle}}'
+          },
+          {
+            name: 'delivery_address',
+            type: 'text',
+            label: 'Delivery address',
+            placeholder: '{{deliveryAddress}}'
+          },
+          {
+            name: 'latitude',
+            type: 'text',
+            label: 'Latitude',
+            placeholder: '{{messagePayload.location.latitude}}'
+          },
+          {
+            name: 'longitude',
+            type: 'text',
+            label: 'Longitude',
+            placeholder: '{{messagePayload.location.longitude}}'
+          },
+          {
+            name: 'delivery_address_details',
+            type: 'text',
+            label: 'Delivery address details',
+            placeholder: '{{last_message}}'
+          },
+          {
+            name: 'delivery_method_selection',
+            type: 'text',
+            label: 'Delivery method selection',
+            placeholder: '{{interactiveReplyTitle}}'
+          },
+          {
+            name: 'another_person_number',
+            type: 'text',
+            label: 'Another person phone number',
+            placeholder: '{{last_message}}'
+          }
+        ]
+      },
+      {
         id: 'save_to_google_sheet',
         name: 'Save to Google Sheet',
         description: 'Append contact information to a Google Spreadsheet',

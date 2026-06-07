@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getUserOrders,
   getOrderById,
+  getOrderCustomerResponse,
   getOrdersByMessageId,
   getOrderStats,
   updateOrderStatus,
@@ -21,6 +22,8 @@ router.get('/user/orders/stats', authenticate, checkPermission('view.ecommerce_o
 router.get('/message/:message_id/orders', authenticate, checkPermission('view.ecommerce_orders'), getOrdersByMessageId);
 
 router.get('/orders/:order_id', authenticate, checkPermission('view.ecommerce_orders'), getOrderById);
+
+router.get('/orders/:order_id/customer-response', authenticate, checkPermission('view.ecommerce_orders'), getOrderCustomerResponse);
 
 router.put('/orders/:order_id/status', authenticate, checkPermission('update.ecommerce_orders'), updateOrderStatus);
 

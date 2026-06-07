@@ -119,13 +119,13 @@ export async function fixSettingsData() {
         needsUpdate = true;
         console.log('Default currency initialized from Currency model');
       } else {
-        const fallbackCurr = await Currency.findOne({ code: 'INR', deleted_at: null });
+        const fallbackCurr = await Currency.findOne({ code: 'EGP', deleted_at: null });
         if (fallbackCurr) {
           fallbackCurr.is_default = true;
           await fallbackCurr.save();
           updateData.default_currency = fallbackCurr._id;
           needsUpdate = true;
-          console.log('Fallback to INR as default currency');
+          console.log('Fallback to EGP as default currency');
         }
       }
     }

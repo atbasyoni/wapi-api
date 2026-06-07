@@ -228,7 +228,7 @@ class AppointmentService {
           contact_id: contactId,
           gateway_config_id: config.payment_gateway_id,
           amount,
-          currency: config.currency || 'INR',
+          currency: config.currency || 'EGP',
           payment_type,
           description: `Appointment: ${config.name}`,
           whatsapp_phone_number_id: whatsappPhoneNumberId || config.waba_id,

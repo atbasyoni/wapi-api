@@ -442,7 +442,7 @@ export const sendPaymentLink = async (req, res) => {
       contact_id: booking.contact_id,
       gateway_config_id: resolvedGatewayId,
       amount,
-      currency: config.currency || 'INR',
+      currency: config.currency || 'EGP',
       payment_type,
       description: `Appointment: ${config.name}`,
       whatsapp_phone_number_id: config.waba_id,

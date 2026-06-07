@@ -533,7 +533,7 @@ export const createProductInCatalog = async (req, res) => {
       description: productData.description || '',
       price: parseFloat(productData.price) || 0,
       sale_price: productData.sale_price || 0,
-      currency: productData.currency || 'USD',
+      currency: productData.currency || 'EGP',
       availability: productData.availability || 'in stock',
       condition: productData.condition || 'new',
       image_urls: Array.isArray(productData.image_urls) ? productData.image_urls : [productData.image_urls].filter(Boolean),

@@ -484,7 +484,7 @@ const handleCheckoutSessionCompleted = async (session) => {
                 subscription_id: subscription._id,
                 plan_id: plan._id,
                 amount: amountPaid,
-                currency: (plan.currency?.code || (typeof plan.currency === 'string' ? plan.currency : 'INR')).toUpperCase(),
+                currency: (plan.currency?.code || (typeof plan.currency === 'string' ? plan.currency : 'EGP')).toUpperCase(),
                 payment_method: 'card',
                 payment_status: 'success',
                 transaction_id: session.payment_intent || null,
@@ -514,7 +514,7 @@ const handleCheckoutSessionCompleted = async (session) => {
                 payment_status: 'paid',
                 transaction_id: session.payment_intent || null,
                 amount_paid: amountPaid,
-                currency: (plan.currency?.code || (typeof plan.currency === 'string' ? plan.currency : 'INR')).toUpperCase(),
+                currency: (plan.currency?.code || (typeof plan.currency === 'string' ? plan.currency : 'EGP')).toUpperCase(),
                 stripe_subscription_id: stripeSubscriptionId || null,
                 stripe_customer_id: stripeCustomerId,
                 taxes: plan.taxes || [],
@@ -531,7 +531,7 @@ const handleCheckoutSessionCompleted = async (session) => {
                 subscription_id: newSubscription._id,
                 plan_id: plan._id,
                 amount: amountPaid,
-                currency: (plan.currency?.code || (typeof plan.currency === 'string' ? plan.currency : 'INR')).toUpperCase(),
+                currency: (plan.currency?.code || (typeof plan.currency === 'string' ? plan.currency : 'EGP')).toUpperCase(),
                 payment_method: 'card',
                 payment_status: 'success',
                 transaction_id: session.payment_intent || null,
@@ -875,7 +875,7 @@ export const handlePayPalWebhook = async (req, res) => {
 
             case 'PAYMENT.SALE.COMPLETED':
                 const amount = parseFloat(resource.amount?.total || 0);
-                const currency = (resource.amount?.currency || subscription.currency || 'USD').toUpperCase();
+                const currency = (resource.amount?.currency || subscription.currency || 'EGP').toUpperCase();
 
                 subscription.payment_status = 'paid';
                 subscription.status = 'active';

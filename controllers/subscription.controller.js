@@ -227,10 +227,10 @@ export const getSubscriptionPayments = async (req, res) => {
         const payments = await PaymentHistory.aggregate(pipeline);
 
         const setting = await Setting.findOne().populate('default_currency').lean();
-        const defaultCurrencyCode = setting?.default_currency?.code || 'INR';
+        const defaultCurrencyCode = setting?.default_currency?.code || 'EGP';
 
         for (let payment of payments) {
-            const rate = await getExchangeRate(payment.currency || 'INR', defaultCurrencyCode);
+            const rate = await getExchangeRate(payment.currency || 'EGP', defaultCurrencyCode);
             if (payment.amount != null) payment.amount = formatAmount(payment.amount * rate);
             if (payment.plan && payment.plan.price != null) payment.plan.price = formatAmount(payment.plan.price * rate);
             payment.currency = defaultCurrencyCode;
@@ -389,10 +389,10 @@ export const getAllSubscriptions = async (req, res) => {
         const subscriptions = await Subscription.aggregate(pipeline);
 
         const setting = await Setting.findOne().populate('default_currency').lean();
-        const defaultCurrencyCode = setting?.default_currency?.code || 'INR';
+        const defaultCurrencyCode = setting?.default_currency?.code || 'EGP';
 
         for (let sub of subscriptions) {
-            const rate = await getExchangeRate(sub.currency || 'INR', defaultCurrencyCode);
+            const rate = await getExchangeRate(sub.currency || 'EGP', defaultCurrencyCode);
             if (sub.amount_paid != null) sub.amount_paid = formatAmount(sub.amount_paid * rate);
             if (sub.plan && sub.plan.price != null) sub.plan.price = formatAmount(sub.plan.price * rate);
             sub.currency = defaultCurrencyCode;
@@ -725,7 +725,7 @@ export const createStripeSubscription = async (req, res) => {
                 payment_gateway: 'stripe',
                 payment_method: 'card',
                 payment_status: 'pending',
-                currency: (plan.currency?.code || plan.currency || 'INR').toString().toUpperCase(),
+                currency: (plan.currency?.code || plan.currency || 'EGP').toString().toUpperCase(),
                 stripe_subscription_id: null,
                 taxes: plan.taxes || [],
                 features: plan.features,
@@ -842,7 +842,7 @@ export const createManualSubscription = async (req, res) => {
             bank_swift_code: manual_payment_type === 'bank_transfer' ? bank_swift_code : null,
             bank_routing_number: manual_payment_type === 'bank_transfer' ? bank_routing_number : null,
             bank_ifsc_no: manual_payment_type === 'bank_transfer' ? bank_ifsc_no : null,
-            currency: (plan.currency?.code || plan.currency || 'INR').toString().toUpperCase(),
+            currency: (plan.currency?.code || plan.currency || 'EGP').toString().toUpperCase(),
             amount_paid: 0,
             taxes: plan.taxes || [],
             features: plan.features,
@@ -940,7 +940,7 @@ export const createRazorpaySubscription = async (req, res) => {
                 payment_gateway: 'razorpay',
                 payment_method: 'card',
                 payment_status: 'pending',
-                currency: (plan.currency?.code || plan.currency || 'INR').toString().toUpperCase(),
+                currency: (plan.currency?.code || plan.currency || 'EGP').toString().toUpperCase(),
                 razorpay_subscription_id: linkResult.id,
                 taxes: plan.taxes || [],
                 features: plan.features,
@@ -1047,7 +1047,7 @@ export const createPayPalSubscription = async (req, res) => {
                 payment_gateway: 'paypal',
                 payment_method: 'card',
                 payment_status: 'pending',
-                currency: (plan.currency?.code || plan.currency || 'USD').toString().toUpperCase(),
+                currency: (plan.currency?.code || plan.currency || 'EGP').toString().toUpperCase(),
                 paypal_subscription_id: paypalSubscription.id,
                 taxes: plan.taxes || [],
                 features: plan.features,
@@ -1160,7 +1160,7 @@ export const assignPlanToUser = async (req, res) => {
             approved_by: adminId,
             approved_at: now,
             created_by: adminId,
-            currency: (plan.currency?.code || plan.currency || 'INR').toString().toUpperCase(),
+            currency: (plan.currency?.code || plan.currency || 'EGP').toString().toUpperCase(),
             amount_paid: amountPaid,
             taxes: plan.taxes || [],
             features: plan.features,
@@ -1404,7 +1404,7 @@ export const changeSubscriptionPlan = async (req, res) => {
                 payment_gateway: 'paypal',
                 payment_method: 'paypal',
                 payment_status: 'pending',
-                currency: (newPlan.currency?.code || newPlan.currency || 'USD').toString().toUpperCase(),
+                currency: (newPlan.currency?.code || newPlan.currency || 'EGP').toString().toUpperCase(),
                 paypal_subscription_id: paypalSubscription.id,
                 taxes: newPlan.taxes || [],
                 auto_rereturnDocument: 'after'
@@ -1444,7 +1444,7 @@ export const changeSubscriptionPlan = async (req, res) => {
                 payment_gateway: 'stripe',
                 payment_method: 'card',
                 payment_status: 'pending',
-                currency: (newPlan.currency?.code || newPlan.currency || 'INR').toString().toUpperCase(),
+                currency: (newPlan.currency?.code || newPlan.currency || 'EGP').toString().toUpperCase(),
                 stripe_subscription_id: null,
                 taxes: newPlan.taxes || [],
                 auto_rereturnDocument: 'after'
@@ -1497,7 +1497,7 @@ export const changeSubscriptionPlan = async (req, res) => {
                 payment_gateway: 'razorpay',
                 payment_method: 'card',
                 payment_status: 'pending',
-                currency: (newPlan.currency?.code || newPlan.currency || 'INR').toString().toUpperCase(),
+                currency: (newPlan.currency?.code || newPlan.currency || 'EGP').toString().toUpperCase(),
                 razorpay_subscription_id: linkResult.id,
                 taxes: newPlan.taxes || [],
                 auto_rereturnDocument: 'after'

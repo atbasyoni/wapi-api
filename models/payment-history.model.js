@@ -22,7 +22,7 @@ const paymentHistorySchema = new mongoose.Schema({
     },
     currency: {
         type: String,
-        default: 'INR'
+        default: 'EGP'
     },
     payment_method: {
         type: String,

@@ -40,7 +40,7 @@ const paymentTransactionSchema = new mongoose.Schema({
   payment_type: { type: String, enum: ['full', 'partial'], default: 'full' },
 
   amount: { type: Number, required: true },
-  currency: { type: String, default: 'INR' },
+  currency: { type: String, default: 'EGP' },
 
   status: {
     type: String,

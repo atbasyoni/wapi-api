@@ -103,7 +103,7 @@ const subscriptionSchema = new mongoose.Schema({
     },
     currency: {
         type: String,
-        default: 'INR'
+        default: 'EGP'
     },
     usage: {
         contacts_used: {

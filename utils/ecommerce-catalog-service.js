@@ -204,7 +204,7 @@ export const syncCatalogWithDatabase = async (catalogId, wabaId, userId, catalog
       waba_id: wabaId,
       catalog_id: catalogId,
       name: catalogData.name || `Catalog ${catalogId}`,
-      currency: catalogData.currency || 'USD',
+      currency: catalogData.currency || 'EGP',
       country: catalogData.country || 'US',
       meta_data: catalogData
     });
@@ -246,7 +246,7 @@ export const syncProductWithDatabase = async (
     description: productData.description || '',
     price: productData.price || 0,
     sale_price : productData.sale_price || 0,
-    currency: productData.currency || 'USD',
+    currency: productData.currency || 'EGP',
     availability: productData.availability || 'in stock',
     condition: productData.condition || 'new',
     image_urls: Array.isArray(productData.image_url)

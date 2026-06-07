@@ -141,7 +141,7 @@ class PaymentGatewayService {
 
     const link = await rz.paymentLink.create({
       amount: payload.amount,
-      currency: payload.currency || 'INR',
+      currency: payload.currency || 'EGP',
       description: payload.description || 'Payment',
       reference_id: payload.reference?.toString(),
       callback_url: payload.returnUrl,
@@ -308,7 +308,7 @@ class PaymentGatewayService {
     const base = this._getPaypalBaseUrl(creds.mode);
     const token = await this._getPaypalToken(creds);
 
-    const currencyDivisor = (payload.currency || 'USD') === 'INR' ? 100 : 100;
+    const currencyDivisor = (payload.currency || 'EGP') === 'EGP' ? 100 : 100;
     const value = (payload.amount / currencyDivisor).toFixed(2);
 
     const response = await axios.post(
@@ -320,7 +320,7 @@ class PaymentGatewayService {
           custom_id: payload.reference?.toString(),
           description: payload.description || 'Payment',
           amount: {
-            currency_code: payload.currency || 'USD',
+            currency_code: payload.currency || 'EGP',
             value
           }
         }],

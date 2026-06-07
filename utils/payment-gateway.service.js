@@ -495,7 +495,7 @@ export const RazorpayService = {
 
     async createPlan(plan) {
         try {
-            const currencyValue = plan.currency?.code || plan.currency || 'INR';
+            const currencyValue = plan.currency?.code || plan.currency || 'EGP';
             const currency = currencyValue.toString().toUpperCase();
             console.log("currency" , currency)
             const amount = Math.max(100, Math.round((plan.price || 0) * 100));
@@ -647,7 +647,7 @@ export const PayPalService = {
     async createPlan(plan, productId) {
         try {
             const { token, apiUrl } = await this.getAccessToken();
-            const currency = (plan.currency?.code || plan.currency || 'USD').toString().toUpperCase();
+            const currency = (plan.currency?.code || plan.currency || 'EGP').toString().toUpperCase();
 
             let intervalUnit = 'MONTH';
             if (plan.billing_cycle === 'yearly') intervalUnit = 'YEAR';

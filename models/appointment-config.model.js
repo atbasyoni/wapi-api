@@ -68,7 +68,7 @@ const appointmentConfigSchema = new mongoose.Schema({
   pre_paid_fees: { type: Number, default: 0 },
   tax_percentage: { type: Number, default: 0 },
   total_appointment_fees: { type: Number, default: 0 },
-  currency: { type: String, default: 'INR' },
+  currency: { type: String, default: 'EGP' },
 
   payment_gateway_id: { type: mongoose.Schema.Types.ObjectId, ref: 'PaymentGatewayConfig' },
   accept_partial_payment: { type: Boolean, default: false },

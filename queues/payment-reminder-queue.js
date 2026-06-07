@@ -72,7 +72,7 @@ const initializeQueueSystem = () => {
           '🔔 *Payment Reminder*\n\nYou have a pending payment of *{currency} {amount}* for *{description}*.\n\nPlease complete it using the link: {payment_link}';
 
         const amountDisplay = (transaction.amount / 100).toFixed(2);
-        const currency = transaction.currency || 'INR';
+        const currency = transaction.currency || 'EGP';
         const description = transaction.metadata.description || 'Service';
         const paymentLink = transaction.payment_link;
 

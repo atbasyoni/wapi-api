@@ -15,7 +15,7 @@ class PaymentLinkService {
       contact_id,
       gateway_config_id,
       amount,
-      currency = 'INR',
+      currency = 'EGP',
       payment_type = 'full',
       description = 'Payment',
       whatsapp_phone_number_id,
@@ -290,7 +290,7 @@ class PaymentLinkService {
     try {
       const { default: unifiedWhatsAppService } = await import('./whatsapp/unified-whatsapp.service.js');
       const amountDisplay = (transaction.amount / 100).toFixed(2);
-      const currency = transaction.currency || 'INR';
+      const currency = transaction.currency || 'EGP';
 
       const messageText =
           `✅ *Payment Successful!*\n\n` +
@@ -357,7 +357,7 @@ class PaymentLinkService {
       }
 
       const amountDisplay = (transaction.amount / 100).toFixed(2);
-      const currency = transaction.currency || 'INR';
+      const currency = transaction.currency || 'EGP';
       const description = transaction.metadata.description || 'Service';
 
       messageText = messageText

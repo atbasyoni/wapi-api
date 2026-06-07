@@ -224,7 +224,7 @@ export const getOrderById = async (req, res) => {
             name: product.name,
             image_urls: product.image_urls || [],
             price: product.price,
-            currency: product.currency || 'USD'
+            currency: product.currency || 'EGP'
           } : null
         };
       });
@@ -299,7 +299,7 @@ export const getOrdersByMessageId = async (req, res) => {
                 name: product.name,
                 image_urls: product.image_urls || [],
                 price: product.price,
-                currency: product.currency || 'USD'
+                currency: product.currency || 'EGP'
               } : null
             };
           });

@@ -121,7 +121,7 @@ export const getAdminDashboardData = async (req, res) => {
     ]);
 
     const setting = await Setting.findOne().populate('default_currency').lean();
-    const defaultCurrencyCode = setting?.default_currency?.code || 'INR';
+    const defaultCurrencyCode = setting?.default_currency?.code || 'EGP';
 
     const revenueData = await getRevenueData(defaultCurrencyCode);
 
@@ -157,7 +157,7 @@ export const getAdminDashboardData = async (req, res) => {
   }
 };
 
-const getRevenueData = async (defaultCurrencyCode = 'INR') => {
+const getRevenueData = async (defaultCurrencyCode = 'EGP') => {
   const today = new Date();
   const startOfDay = new Date(today.setHours(0, 0, 0, 0));
   const endOfDay = new Date(today.setHours(23, 59, 59, 999));
@@ -221,7 +221,7 @@ const getRevenueData = async (defaultCurrencyCode = 'INR') => {
   const calculateTotal = async (results) => {
     let total = 0;
     for (const row of results) {
-      const curr = row._id || 'INR';
+      const curr = row._id || 'EGP';
       const rate = await getExchangeRate(curr, defaultCurrencyCode);
       total += row.total * rate;
     }
@@ -235,7 +235,7 @@ const getRevenueData = async (defaultCurrencyCode = 'INR') => {
   };
 };
 
-const getChartsData = async (range, defaultCurrencyCode = 'INR') => {
+const getChartsData = async (range, defaultCurrencyCode = 'EGP') => {
   const planMatch = {
     deleted_at: null,
     payment_status: 'success',
@@ -271,7 +271,7 @@ const getChartsData = async (range, defaultCurrencyCode = 'INR') => {
   const planMap = {};
   for (const row of planRevenueBreakdownRaw) {
     const planName = row._id.planName;
-    const curr = row._id.currency || 'INR';
+    const curr = row._id.currency || 'EGP';
     const rate = await getExchangeRate(curr, defaultCurrencyCode);
 
     if (!planMap[planName]) {
@@ -326,7 +326,7 @@ const getChartsData = async (range, defaultCurrencyCode = 'INR') => {
   const graphMap = {};
   for (const row of revenueGraphDataRaw) {
     const month = row._id.month;
-    const curr = row._id.currency || 'INR';
+    const curr = row._id.currency || 'EGP';
     const rate = await getExchangeRate(curr, defaultCurrencyCode);
 
     if (!graphMap[month]) {
@@ -344,7 +344,7 @@ const getChartsData = async (range, defaultCurrencyCode = 'INR') => {
   };
 };
 
-const getTablesData = async (range, defaultCurrencyCode = 'INR') => {
+const getTablesData = async (range, defaultCurrencyCode = 'EGP') => {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   const adminRole = await Role.findOne({ name: 'super_admin' });
@@ -466,7 +466,7 @@ const getTablesData = async (range, defaultCurrencyCode = 'INR') => {
   ]);
 
   for (let sub of newSubscriptions) {
-    const rate = await getExchangeRate(sub.subscriptionCurrency || 'INR', defaultCurrencyCode);
+    const rate = await getExchangeRate(sub.subscriptionCurrency || 'EGP', defaultCurrencyCode);
     if (sub.amount_paid) sub.amount_paid = formatAmount(sub.amount_paid * rate);
     if (sub.planPrice) sub.planPrice = formatAmount(sub.planPrice * rate);
     sub.currency = defaultCurrencyCode;
@@ -529,7 +529,7 @@ const getTablesData = async (range, defaultCurrencyCode = 'INR') => {
   ]);
 
   for (let sub of cancelledSubscriptions) {
-    const rate = await getExchangeRate(sub.subscriptionCurrency || 'INR', defaultCurrencyCode);
+    const rate = await getExchangeRate(sub.subscriptionCurrency || 'EGP', defaultCurrencyCode);
     if (sub.amount_paid) sub.amount_paid = formatAmount(sub.amount_paid * rate);
     if (sub.planPrice) sub.planPrice = formatAmount(sub.planPrice * rate);
     sub.currency = defaultCurrencyCode;
@@ -607,7 +607,7 @@ export const getAdminDashboardCounts = async (req, res) => {
     ]);
 
     const setting = await Setting.findOne().populate('default_currency').lean();
-    const defaultCurrencyCode = setting?.default_currency?.code || 'INR';
+    const defaultCurrencyCode = setting?.default_currency?.code || 'EGP';
 
     const revenueData = await getRevenueData(defaultCurrencyCode);
 
